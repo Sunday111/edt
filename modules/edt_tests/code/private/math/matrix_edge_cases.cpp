@@ -195,6 +195,25 @@ TEST(MatrixEdgeTest, EqualityIsElementWise)  // NOLINT
     EXPECT_EQ(positive_zero, negative_zero);
 }
 
+TEST(MatrixEdgeTest, IsFiniteChecksEveryComponent)  // NOLINT
+{
+    Vec3f value{1.f, -2.f, 0.f};
+    EXPECT_TRUE(value.IsFinite());
+
+    value.y() = std::numeric_limits<float>::infinity();
+    EXPECT_FALSE(value.IsFinite());
+
+    value = {};
+    value.z() = std::numeric_limits<float>::quiet_NaN();
+    EXPECT_FALSE(value.IsFinite());
+
+    edt::Matrix<float, 2, 2> matrix{};
+    EXPECT_TRUE(matrix.IsFinite());
+
+    matrix(1, 0) = std::numeric_limits<float>::infinity();
+    EXPECT_FALSE(matrix.IsFinite());
+}
+
 // The identity matrix is neutral under multiplication from either side.
 TEST(MatrixEdgeTest, IdentityIsNeutralForMatMul)  // NOLINT
 {
