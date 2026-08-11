@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <concepts>
 #include <cstddef>
 #include <cstdint>
 #include <ranges>
@@ -218,6 +219,12 @@ public:
     [[nodiscard]] constexpr T* data() { return data_.data(); }
 
     [[nodiscard]] const T* data() const { return data_.data(); }
+
+    [[nodiscard]] constexpr bool IsFinite() const
+        requires std::floating_point<T>
+    {
+        return std::ranges::all_of(data_, [](T value) { return std::isfinite(value); });
+    }
 
     // Two-dimensional "cross product". A hack to obtain a magnitude of 3-dimensional cross product
     template <size_t other_rows, size_t other_columns>
