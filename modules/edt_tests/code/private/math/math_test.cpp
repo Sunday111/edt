@@ -1,11 +1,23 @@
 #include "edt/math/math.hpp"
 
+#include <limits>
 #include <numbers>
 
 #include "test_tools.hpp"
 
 namespace edt
 {
+static_assert(Math::IsFinite(0.f));
+static_assert(Math::IsFinite(-1.0));
+static_assert(noexcept(Math::IsFinite(0.f)));
+static_assert(!Math::IsFinite(std::numeric_limits<float>::infinity()));
+static_assert(!Math::IsFinite(std::numeric_limits<double>::quiet_NaN()));
+static_assert(Math::IsFinite(Vec3f{1.f, -2.f, 0.f}));
+static_assert(noexcept(Math::IsFinite(Vec3f{})));
+static_assert(!Math::IsFinite(Vec3f{1.f, std::numeric_limits<float>::infinity(), 0.f}));
+static_assert(Math::IsFinite(Matrix<float, 2, 2>{}));
+static_assert(!Math::IsFinite(Matrix<float, 2, 2>{{0.f, 1.f, std::numeric_limits<float>::quiet_NaN(), 3.f}}));
+
 static_assert(
     []
     {

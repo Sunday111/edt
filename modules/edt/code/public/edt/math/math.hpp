@@ -30,6 +30,18 @@ public:
         return x * x;
     }
 
+    template <std::floating_point T>
+    [[nodiscard]] static constexpr bool IsFinite(T value) noexcept
+    {
+        return std::isfinite(value);
+    }
+
+    template <std::floating_point T, size_t rows, size_t columns>
+    [[nodiscard]] static constexpr bool IsFinite(const Matrix<T, rows, columns>& value) noexcept
+    {
+        return value.IsFinite();
+    }
+
     // Get rainbow colors by time t
     [[nodiscard]] static constexpr Vec3<u8> GetRainbowColors(f32 t)
     {
