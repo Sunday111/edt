@@ -220,7 +220,7 @@ public:
 
     [[nodiscard]] const T* data() const { return data_.data(); }
 
-    [[nodiscard]] constexpr bool IsFinite() const
+    [[nodiscard]] constexpr bool IsFinite() const noexcept
         requires std::floating_point<T>
     {
         return std::ranges::all_of(data_, [](T value) { return std::isfinite(value); });
