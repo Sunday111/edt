@@ -1,10 +1,15 @@
 #include "edt/threading/batch_thread_pool.hpp"
 
+#include <array>
 #include <atomic>
 #include <cstddef>
 #include <numeric>
 #include <set>
 #include <vector>
+
+#if defined(__linux__)
+#include <pthread.h>
+#endif
 
 #include "gtest/gtest.h"
 
@@ -99,3 +104,34 @@ TEST(BatchThreadPoolTest, DestroysCleanlyWithoutEverRunningABatch)
     edt::BatchThreadPool pool(4);
     EXPECT_EQ(pool.GetThreadsCount(), 4u);
 }
+
+#if defined(__linux__)
+TEST(BatchThreadPoolTest, NamesWorkerThreads)
+{
+    const auto read_names = [](edt::BatchThreadPool& pool)
+    {
+        std::array<std::array<char, 16>, 2> names{};
+        std::array<int, 2> results{};
+        pool.RunBatch(
+            [&](size_t thread_index, size_t)
+            {
+                results[thread_index] =
+                    pthread_getname_np(pthread_self(), names[thread_index].data(), names[thread_index].size());
+            });
+
+        constexpr std::array<int, 2> expected_results{};
+        EXPECT_EQ(results, expected_results);
+        return names;
+    };
+
+    edt::BatchThreadPool default_name_pool(2);
+    const auto default_names = read_names(default_name_pool);
+    EXPECT_STREQ(default_names[0].data(), "edt_batch_0");
+    EXPECT_STREQ(default_names[1].data(), "edt_batch_1");
+
+    edt::BatchThreadPool custom_name_pool(2, "worker_");
+    const auto custom_names = read_names(custom_name_pool);
+    EXPECT_STREQ(custom_names[0].data(), "worker_0");
+    EXPECT_STREQ(custom_names[1].data(), "worker_1");
+}
+#endif

@@ -57,6 +57,7 @@ set(module_source_files
     ${CMAKE_CURRENT_SOURCE_DIR}/code/public/edt/template/worst_qualifiers.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/code/public/edt/template/worst_reference.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/code/public/edt/threading/batch_thread_pool.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/code/public/edt/threading/thread_name.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/code/public/edt/time/measure_time.hpp)
 add_library(edt INTERFACE ${module_source_files})
 set_generic_compiler_options(edt INTERFACE)

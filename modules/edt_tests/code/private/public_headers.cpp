@@ -68,6 +68,7 @@
 #include "edt/template/worst_qualifiers.hpp"
 #include "edt/template/worst_reference.hpp"
 #include "edt/threading/batch_thread_pool.hpp"
+#include "edt/threading/thread_name.hpp"
 #include "edt/time/measure_time.hpp"
 #include "gtest/gtest.h"
 
@@ -130,6 +131,7 @@ constexpr auto kIncludedHeaders = std::to_array<std::string_view>({
     "template/worst_qualifiers.hpp",
     "template/worst_reference.hpp",
     "threading/batch_thread_pool.hpp",
+    "threading/thread_name.hpp",
     "time/measure_time.hpp",
 });
 

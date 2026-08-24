@@ -7,9 +7,13 @@
 #include <cstdint>
 #include <functional>
 #include <ranges>
+#include <string>
 #include <thread>
 #include <type_traits>
+#include <utility>
 #include <vector>
+
+#include "edt/threading/thread_name.hpp"
 
 namespace edt
 {
@@ -21,7 +25,9 @@ class BatchThreadPool
 public:
     using Callback = void (*)(void* context, size_t thread_index, size_t num_threads);
 
-    explicit BatchThreadPool(size_t threads_count) : sync_point_(static_cast<int32_t>(threads_count + 1))
+    explicit BatchThreadPool(size_t threads_count, std::string thread_name_prefix = "edt_batch_")
+        : thread_name_prefix_(std::move(thread_name_prefix)),
+          sync_point_(static_cast<int32_t>(threads_count + 1))
     {
         for (const size_t thread_index : std::views::iota(size_t{0}, threads_count))
         {
@@ -71,6 +77,7 @@ private:
     // observed on the far side of the barrier.
     void ThreadEntry(const std::stop_token& stop_token, size_t thread_index)
     {
+        SetCurrentThreadName(thread_name_prefix_ + std::to_string(thread_index));
         for (;;)
         {
             sync_point_.arrive_and_wait();
@@ -80,6 +87,7 @@ private:
         }
     }
 
+    std::string thread_name_prefix_;
     std::barrier<> sync_point_;
     std::vector<std::jthread> threads_;
     Callback callback_ = nullptr;
