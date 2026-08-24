@@ -61,6 +61,7 @@ set(module_source_files
     ${CMAKE_CURRENT_SOURCE_DIR}/code/private/template/worst_reference.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/code/private/test_tools.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/code/private/threading/batch_thread_pool.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/code/private/threading/thread_name.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/code/private/time/measure_time.cpp)
 add_executable(edt_tests ${module_source_files})
 set_generic_compiler_options(edt_tests PRIVATE)
