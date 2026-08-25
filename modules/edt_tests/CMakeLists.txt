@@ -1,5 +1,6 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.29)
 include(set_compiler_options)
+include(yae_debug_info_compression)
 set(module_source_files
     ${CMAKE_CURRENT_SOURCE_DIR}/code/private/algorithm/clamp.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/code/private/algorithm/clamp_exhaustive.cpp
@@ -69,6 +70,7 @@ target_link_libraries(edt_tests PRIVATE edt
                                         gtest_main)
 target_include_directories(edt_tests PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/code/public)
 target_include_directories(edt_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/code/private)
+enable_debug_info_compression_for(edt_tests)
 enable_testing()
 include(GoogleTest)
 gtest_discover_tests(edt_tests)

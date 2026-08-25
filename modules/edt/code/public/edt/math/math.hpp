@@ -166,7 +166,7 @@ public:
         f32 y = angle - 2 * std::numbers::pi_v<f32> * quotient;
 
         // Map y to [-pi/2,pi/2] with sin(y) = sin(Value).
-        f32 sign;  // NOLINT
+        f32 sign = 1.f;
         if (y > (std::numbers::pi_v<f32> / 2.f))
         {
             y = std::numbers::pi_v<f32> - y;
@@ -176,10 +176,6 @@ public:
         {
             y = -std::numbers::pi_v<f32> - y;
             sign = -1.0f;
-        }
-        else
-        {
-            sign = +1.0f;
         }
 
         f32 y2 = y * y;
@@ -200,7 +196,8 @@ public:
 
     [[nodiscard]] static constexpr Mat3f RotationMatrix2d(f32 angle_radians) noexcept
     {
-        f32 s, c;  // NOLINT
+        f32 s{};
+        f32 c{};
         SinCos(angle_radians, s, c);
 
         Mat3f m{};
@@ -213,7 +210,8 @@ public:
 
     [[nodiscard]] static constexpr Mat4f RotationMatrix3dX(f32 angle_radians)
     {
-        f32 s, c;  // NOLINT
+        f32 s{};
+        f32 c{};
         SinCos(angle_radians, s, c);
 
         Mat4f m{};
@@ -226,7 +224,8 @@ public:
 
     [[nodiscard]] static constexpr Mat4f RotationMatrix3dY(f32 angle_radians)
     {
-        f32 s, c;  // NOLINT
+        f32 s{};
+        f32 c{};
         SinCos(angle_radians, s, c);
         Mat4f m{};
         m(0, 0) = c;
@@ -240,7 +239,8 @@ public:
 
     [[nodiscard]] static constexpr Mat4f RotationMatrix3dZ(f32 angle_radians)
     {
-        f32 s, c;  // NOLINT
+        f32 s{};
+        f32 c{};
         SinCos(angle_radians, s, c);
         Mat4f m{};
         m(0, 0) = c;
@@ -310,7 +310,8 @@ public:
         {
             const f32 fi = static_cast<f32>(i);
             const f32 t = fi / (nf - 1);
-            f32 x, y;  // NOLINT
+            f32 x{};
+            f32 y{};
             edt::Math::SinCos(delta_angle * fi + phase, y, x);
 
             f32 r = t * max_r;

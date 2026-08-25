@@ -34,7 +34,12 @@ public:
         // This is an inlined varsion of multiplication between three matrices
         // https://en.wikipedia.org/wiki/Rotation_matrix#General_3D_rotations
 
-        float sa, ca, sb, cb, sg, cg;  // NOLINT
+        float sa{};
+        float ca{};
+        float sb{};
+        float cb{};
+        float sg{};
+        float cg{};
         Math::SinCos(Math::DegToRad(roll), sa, ca);
         Math::SinCos(Math::DegToRad(pitch), sb, cb);
         Math::SinCos(Math::DegToRad(yaw), sg, cg);
