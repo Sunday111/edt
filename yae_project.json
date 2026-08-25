@@ -5,7 +5,11 @@
         "build_targets": [
             "edt_tests"
         ],
-        "run_target": "edt_tests"
+        "run_target": "edt_tests",
+        "yae-toolchain": {
+            "compiler": "clang-22",
+            "linker": "ld"
+        }
     },
     "cpp": {
         "standard": "23"
