@@ -226,7 +226,6 @@ public:
         return std::ranges::all_of(data_, [](T value) { return std::isfinite(value); });
     }
 
-    // Two-dimensional "cross product". A hack to obtain a magnitude of 3-dimensional cross product
     template <size_t other_rows, size_t other_columns>
         requires(kVectorsWithSameSize<Matrix<T, other_rows, other_columns>, Matrix> && Size() == 2)
     [[nodiscard]] constexpr T Cross(const Matrix<T, other_rows, other_columns>& other) const
@@ -236,16 +235,10 @@ public:
         return a[0] * b[1] - a[1] * b[0];
     }
 
-    [[nodiscard]] constexpr T Magnitude() const
-        requires(IsVector())
-    {
-        return this->Dot(*this);
-    }
-
     [[nodiscard]] constexpr T SquaredLength() const
         requires(IsVector())
     {
-        return Magnitude();
+        return this->Dot(*this);
     }
 
     [[nodiscard]] T Length() const

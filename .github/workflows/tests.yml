@@ -1,6 +1,7 @@
 name: tests
 
 on:
+  workflow_dispatch:
   # A branch with an open pull request would otherwise be built twice: once for the
   # push and once for the pull request.
   push:
@@ -21,15 +22,9 @@ jobs:
       # package itself, so the code under test is what gets built.
       YAE_REPOS: ${{ github.workspace }}/.yae-repos
       # gcc 13 cannot parse an explicit object parameter and the preinstalled clang
-      # rejects the constrained operator templates in enum_bitset.hpp. CMake picks the
-      # compiler up from CC/CXX and the flags from CXXFLAGS/LDFLAGS.
+      # rejects the constrained operator templates in enum_bitset.hpp. The project
+      # toolchain selects the matching Clang version installed below.
       CLANG_VERSION: "22"
-      CC: clang-22
-      CXX: clang++-22
-      # libstdc++ 14 rejects the BatchThreadPool argument to std::jthread at C++23.
-      # libc++ is what edt's consumers build against anyway.
-      CXXFLAGS: -stdlib=libc++
-      LDFLAGS: -stdlib=libc++
     steps:
       - name: Check out edt
         uses: actions/checkout@v4
@@ -55,7 +50,6 @@ jobs:
           wget https://apt.llvm.org/llvm.sh
           chmod +x llvm.sh
           sudo ./llvm.sh "$CLANG_VERSION"
-          sudo apt-get install -y "libc++-$CLANG_VERSION-dev" "libc++abi-$CLANG_VERSION-dev"
           "clang++-$CLANG_VERSION" --version
 
       # Options must precede the target: `yae run` forwards everything after the

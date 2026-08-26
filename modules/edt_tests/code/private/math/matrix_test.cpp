@@ -107,7 +107,6 @@ static_assert(CanCross<Vec3i, Matrix<int, 1, 3>>);
 static_assert(!CanCross<Vec4i, Vec4i>);
 static_assert(Vec2i{1, 2}.Cross(Matrix<int, 1, 2>{4, 5}) == -3);
 static_assert(Vec3i{1, 2, 3}.Cross(Matrix<int, 1, 3>{4, 5, 6}) == Vec3i{-3, 6, -3});
-static_assert(Vec3i{1, 2, 3}.Magnitude() == 14);
 static_assert(Vec3i{1, 2, 3}.SquaredLength() == 14);
 
 static_assert(

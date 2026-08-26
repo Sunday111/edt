@@ -5,7 +5,6 @@
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
-#include <functional>
 #include <ranges>
 #include <string>
 #include <thread>
@@ -31,7 +30,8 @@ public:
     {
         for (const size_t thread_index : std::views::iota(size_t{0}, threads_count))
         {
-            threads_.emplace_back(std::bind_front(&BatchThreadPool::ThreadEntry, this), thread_index);
+            threads_.emplace_back([this, thread_index](std::stop_token stop_token)
+                                  { ThreadEntry(stop_token, thread_index); });
         }
     }
 
