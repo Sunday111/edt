@@ -28,10 +28,24 @@ public:
         : thread_name_prefix_(std::move(thread_name_prefix)),
           sync_point_(static_cast<int32_t>(threads_count + 1))
     {
-        for (const size_t thread_index : std::views::iota(size_t{0}, threads_count))
+        threads_.reserve(threads_count);
+        try
         {
-            threads_.emplace_back([this, thread_index](std::stop_token stop_token)
-                                  { ThreadEntry(stop_token, thread_index); });
+            for (const size_t thread_index : std::views::iota(size_t{0}, threads_count))
+            {
+                threads_.emplace_back([this, thread_index](std::stop_token stop_token)
+                                      { ThreadEntry(stop_token, thread_index); });
+            }
+        }
+        catch (...)
+        {
+            std::ranges::for_each(threads_, &std::jthread::request_stop);
+            for (size_t missing = threads_.size(); missing < threads_count; ++missing)
+            {
+                sync_point_.arrive_and_drop();
+            }
+            sync_point_.arrive_and_wait();
+            throw;
         }
     }
 
