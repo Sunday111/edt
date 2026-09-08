@@ -5,72 +5,60 @@
 #include <cstddef>
 #include <numeric>
 #include <set>
+#include <system_error>
+#include <thread>
+#include <utility>
 #include <vector>
 
 #if defined(__linux__)
-#include <dlfcn.h>
 #include <pthread.h>
-#include <unistd.h>
-
-#include <bit>
-#include <cerrno>
-#include <cstdlib>
-#include <optional>
-#include <system_error>
 #endif
 
 #include "gtest/gtest.h"
 
-#if defined(__linux__)
 namespace
 {
-thread_local std::optional<size_t> successful_thread_creations_before_failure;
-}
-
-extern "C" int
-pthread_create(pthread_t* thread, const pthread_attr_t* attributes, void* (*entry)(void*), void* argument) noexcept
+class ThrowingThread : public std::jthread
 {
-    if (successful_thread_creations_before_failure)
-    {
-        if (*successful_thread_creations_before_failure == 0) return EAGAIN;
-        --*successful_thread_creations_before_failure;
-    }
-    static const auto create = std::bit_cast<decltype(&pthread_create)>(dlsym(RTLD_NEXT, "pthread_create"));
-    if (!create) std::abort();
-    return create(thread, attributes, entry, argument);
-}
+public:
+    static inline thread_local size_t successful_creations_before_failure = 0;
 
-TEST(BatchThreadPoolDeathTest, ThreadCreationFailureJoinsStartedWorkersAndRethrows)
+    template <typename Callback>
+    explicit ThrowingThread(Callback&& callback)
+    {
+        if (successful_creations_before_failure == 0)
+        {
+            throw std::system_error(std::make_error_code(std::errc::resource_unavailable_try_again));
+        }
+        --successful_creations_before_failure;
+        std::jthread::operator=(std::jthread(std::forward<Callback>(callback)));
+    }
+};
+}  // namespace
+
+TEST(BatchThreadPoolTest, ThreadCreationFailureJoinsStartedWorkersAndRethrows)
 {
     for (size_t started : {size_t{0}, size_t{1}, size_t{3}})
     {
-        EXPECT_EXIT(
-            {
-                alarm(5);
-                successful_thread_creations_before_failure = started;
-                bool caught = false;
-                try
-                {
-                    edt::BatchThreadPool pool(4);
-                }
-                catch (const std::system_error& error)
-                {
-                    caught = error.code() == std::errc::resource_unavailable_try_again;
-                }
-                successful_thread_creations_before_failure.reset();
-                {
-                    edt::BatchThreadPool pool(2);
-                    std::atomic<size_t> calls{0};
-                    pool.RunBatch([&](size_t, size_t) { calls.fetch_add(1, std::memory_order_relaxed); });
-                    if (calls.load(std::memory_order_relaxed) != 2) std::_Exit(1);
-                }
-                std::_Exit(caught ? 0 : 1);
-            },
-            ::testing::ExitedWithCode(0),
-            "");
+        SCOPED_TRACE(started);
+        ThrowingThread::successful_creations_before_failure = started;
+        try
+        {
+            edt::BasicBatchThreadPool<ThrowingThread> pool(4);
+            FAIL() << "Thread creation should have failed";
+        }
+        catch (const std::system_error& error)
+        {
+            EXPECT_EQ(error.code(), std::errc::resource_unavailable_try_again);
+        }
+        EXPECT_EQ(ThrowingThread::successful_creations_before_failure, 0u);
+        ThrowingThread::successful_creations_before_failure = 2;
+        edt::BasicBatchThreadPool<ThrowingThread> pool(2);
+        std::atomic<size_t> calls{0};
+        pool.RunBatch([&](size_t, size_t) { calls.fetch_add(1, std::memory_order_relaxed); });
+        EXPECT_EQ(calls.load(std::memory_order_relaxed), 2u);
     }
 }
-#endif
 
 TEST(BatchThreadPoolTest, ReportsItsThreadCount)
 {

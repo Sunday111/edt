@@ -12,6 +12,7 @@
 #include <utility>
 #include <vector>
 
+#include "edt/functional/on_scope_leave.hpp"
 #include "edt/threading/thread_name.hpp"
 
 namespace edt
@@ -19,46 +20,45 @@ namespace edt
 // Runs one callback on every worker thread and returns once all of them are done.
 // The pool owns its threads for its whole lifetime; a batch costs two barrier
 // rendezvous rather than a task allocation and a wakeup per call.
-class BatchThreadPool
+template <typename Thread>
+class BasicBatchThreadPool
 {
 public:
     using Callback = void (*)(void* context, size_t thread_index, size_t num_threads);
 
-    explicit BatchThreadPool(size_t threads_count, std::string thread_name_prefix = "edt_batch_")
+    explicit BasicBatchThreadPool(size_t threads_count, std::string thread_name_prefix = "edt_batch_")
         : thread_name_prefix_(std::move(thread_name_prefix)),
           sync_point_(static_cast<int32_t>(threads_count + 1))
     {
         threads_.reserve(threads_count);
-        try
-        {
-            for (const size_t thread_index : std::views::iota(size_t{0}, threads_count))
+        auto cleanup_incomplete_startup = OnScopeLeave(
+            [&]
             {
-                threads_.emplace_back([this, thread_index](std::stop_token stop_token)
-                                      { ThreadEntry(stop_token, thread_index); });
-            }
-        }
-        catch (...)
+                if (threads_.size() == threads_count) return;
+                std::ranges::for_each(threads_, &Thread::request_stop);
+                for (size_t missing = threads_.size(); missing < threads_count; ++missing)
+                {
+                    sync_point_.arrive_and_drop();
+                }
+                sync_point_.arrive_and_wait();
+            });
+        for (size_t thread_index : std::views::iota(size_t{0}, threads_count))
         {
-            std::ranges::for_each(threads_, &std::jthread::request_stop);
-            for (size_t missing = threads_.size(); missing < threads_count; ++missing)
-            {
-                sync_point_.arrive_and_drop();
-            }
-            sync_point_.arrive_and_wait();
-            throw;
+            threads_.emplace_back([this, thread_index](std::stop_token stop_token)
+                                  { ThreadEntry(stop_token, thread_index); });
         }
     }
 
-    BatchThreadPool(const BatchThreadPool&) = delete;
-    BatchThreadPool(BatchThreadPool&&) = delete;
-    BatchThreadPool& operator=(const BatchThreadPool&) = delete;
-    BatchThreadPool& operator=(BatchThreadPool&&) = delete;
+    BasicBatchThreadPool(const BasicBatchThreadPool&) = delete;
+    BasicBatchThreadPool(BasicBatchThreadPool&&) = delete;
+    BasicBatchThreadPool& operator=(const BasicBatchThreadPool&) = delete;
+    BasicBatchThreadPool& operator=(BasicBatchThreadPool&&) = delete;
 
-    ~BatchThreadPool()
+    ~BasicBatchThreadPool()
     {
-        std::ranges::for_each(threads_, &std::jthread::request_stop);
+        std::ranges::for_each(threads_, &Thread::request_stop);
         sync_point_.arrive_and_wait();
-        std::ranges::for_each(threads_, &std::jthread::join);
+        std::ranges::for_each(threads_, &Thread::join);
     }
 
     [[nodiscard]] size_t GetThreadsCount() const { return threads_.size(); }
@@ -103,8 +103,10 @@ private:
 
     std::string thread_name_prefix_;
     std::barrier<> sync_point_;
-    std::vector<std::jthread> threads_;
+    std::vector<Thread> threads_;
     Callback callback_ = nullptr;
     void* context_ = nullptr;
 };
+
+using BatchThreadPool = BasicBatchThreadPool<std::jthread>;
 }  // namespace edt
