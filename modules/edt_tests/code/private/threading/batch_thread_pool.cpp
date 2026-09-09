@@ -5,6 +5,9 @@
 #include <cstddef>
 #include <numeric>
 #include <set>
+#include <system_error>
+#include <thread>
+#include <utility>
 #include <vector>
 
 #if defined(__linux__)
@@ -12,6 +15,50 @@
 #endif
 
 #include "gtest/gtest.h"
+
+namespace
+{
+class ThrowingThread : public std::jthread
+{
+public:
+    static inline thread_local size_t successful_creations_before_failure = 0;
+
+    template <typename Callback>
+    explicit ThrowingThread(Callback&& callback)
+    {
+        if (successful_creations_before_failure == 0)
+        {
+            throw std::system_error(std::make_error_code(std::errc::resource_unavailable_try_again));
+        }
+        --successful_creations_before_failure;
+        std::jthread::operator=(std::jthread(std::forward<Callback>(callback)));
+    }
+};
+}  // namespace
+
+TEST(BatchThreadPoolTest, ThreadCreationFailureJoinsStartedWorkersAndRethrows)
+{
+    for (size_t started : {size_t{0}, size_t{1}, size_t{3}})
+    {
+        SCOPED_TRACE(started);
+        ThrowingThread::successful_creations_before_failure = started;
+        try
+        {
+            edt::BasicBatchThreadPool<ThrowingThread> pool(4);
+            FAIL() << "Thread creation should have failed";
+        }
+        catch (const std::system_error& error)
+        {
+            EXPECT_EQ(error.code(), std::errc::resource_unavailable_try_again);
+        }
+        EXPECT_EQ(ThrowingThread::successful_creations_before_failure, 0u);
+        ThrowingThread::successful_creations_before_failure = 2;
+        edt::BasicBatchThreadPool<ThrowingThread> pool(2);
+        std::atomic<size_t> calls{0};
+        pool.RunBatch([&](size_t, size_t) { calls.fetch_add(1, std::memory_order_relaxed); });
+        EXPECT_EQ(calls.load(std::memory_order_relaxed), 2u);
+    }
+}
 
 TEST(BatchThreadPoolTest, ReportsItsThreadCount)
 {
