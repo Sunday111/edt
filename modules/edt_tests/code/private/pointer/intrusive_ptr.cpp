@@ -27,7 +27,77 @@ struct Traits
 
 template <typename T>
 using Ptr = edt::IntrusivePtr<T, Traits>;
+
+struct OwningTraits
+{
+    static void AddReference(Counted* p) { ++p->refs; }
+    static void ReleaseReference(Counted* p)
+    {
+        if (--p->refs == 0) delete p;
+    }
+};
+
+struct OwnedNode : Counted
+{
+    explicit OwnedNode(int& live) : live_(live) { ++live_; }
+    ~OwnedNode() override { --live_; }
+
+    int& live_;
+    edt::IntrusivePtr<OwnedNode, OwningTraits> next;
+};
 }  // namespace
+
+TEST(IntrusivePtrTest, AssignmentFromOwnedMemberKeepsTheChildAlive)
+{
+    using OwnedPtr = edt::IntrusivePtr<OwnedNode, OwningTraits>;
+    for (bool move : {false, true})
+    {
+        SCOPED_TRACE(move);
+        int live = 0;
+        {
+            auto parent = OwnedPtr::MakeInstance(live);
+            parent->next = OwnedPtr::MakeInstance(live);
+            OwnedNode* child = parent->next.Get();
+            ASSERT_EQ(live, 2);
+
+            if (move)
+                parent = std::move(parent->next);
+            else
+                parent = parent->next;
+
+            ASSERT_EQ(live, 1);
+            ASSERT_EQ(parent.Get(), child);
+            EXPECT_EQ(parent->refs, 1);
+        }
+        EXPECT_EQ(live, 0);
+    }
+}
+
+TEST(IntrusivePtrTest, ConvertingAssignmentFromOwnedMemberKeepsTheChildAlive)
+{
+    using OwnedPtr = edt::IntrusivePtr<OwnedNode, OwningTraits>;
+    for (bool move : {false, true})
+    {
+        SCOPED_TRACE(move);
+        int live = 0;
+        {
+            edt::IntrusivePtr<Counted, OwningTraits> parent = OwnedPtr::MakeInstance(live);
+            auto& node = *static_cast<OwnedNode*>(parent.Get());
+            node.next = OwnedPtr::MakeInstance(live);
+            OwnedNode* child = node.next.Get();
+
+            if (move)
+                parent = std::move(node.next);
+            else
+                parent = node.next;
+
+            ASSERT_EQ(live, 1);
+            ASSERT_EQ(parent.Get(), child);
+            EXPECT_EQ(parent->refs, 1);
+        }
+        EXPECT_EQ(live, 0);
+    }
+}
 
 TEST(IntrusivePtrTest, CountsReferences)
 {

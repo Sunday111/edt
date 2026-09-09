@@ -137,23 +137,27 @@ protected:
             }
         }
 
+        T* incoming = that.p_;
+        if (incoming != nullptr)
+        {
+            Traits::AddReference(incoming);
+        }
         if constexpr (releasePrev)
         {
             ReleaseReference<false>();
         }
-        p_ = that.p_;
-        AddReference();
+        p_ = incoming;
     }
 
     template <bool releasePrev, typename U>
     void MoveFrom(IntrusivePtr<U, Traits>& that) noexcept
     {
+        T* incoming = std::exchange(that.p_, nullptr);
         if constexpr (releasePrev)
         {
             ReleaseReference<false>();
         }
-        p_ = that.p_;
-        that.p_ = nullptr;
+        p_ = incoming;
     }
 
     void AddReference() noexcept
